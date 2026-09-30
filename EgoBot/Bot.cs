@@ -46,7 +46,6 @@ public class Bot
 
         await _client.LoginAsync(TokenType.Bot, config.Token);
         
-
         await _interactions.AddModulesAsync(Assembly.GetExecutingAssembly(), _services);
 
         await _client.StartAsync();
@@ -86,11 +85,13 @@ public class Bot
 
                 Console.WriteLine($"Usuário: {usuario.Username}");
                 Console.WriteLine($"ID: {usuario.Id}");
+                Console.WriteLine(DateTime.Now.ToString());
             }
 
 
             Console.WriteLine($"Handle Interaction arrived! {interaction.Type}");
                 var context = new SocketInteractionContext(_client, interaction);
+
 
                 
                 Console.WriteLine("Execute command async finished!");

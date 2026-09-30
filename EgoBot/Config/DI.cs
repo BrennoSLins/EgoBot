@@ -48,6 +48,7 @@ namespace EgoBot
             services.AddSingleton<PlayerComponents>();
             services.AddSingleton<PlayerModals>();
             services.AddSingleton<EditModalState>();
+            services.AddSingleton<PlayerRepo>();
 
 
             return services.BuildServiceProvider();

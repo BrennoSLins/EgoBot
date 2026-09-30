@@ -24,14 +24,16 @@ namespace EgoBot
         private readonly PlayerService _service;
         private readonly InteractionService _interactions;
         private readonly EditModalState _modalstate;
+        private readonly PlayerRepo _repo;
 
 
 
-        public PlayerModals(PlayerService service, InteractionService interactions, EditModalState modalstate)
+        public PlayerModals(PlayerService service, InteractionService interactions, EditModalState modalstate, PlayerRepo repo)
         {
             _service = service;
             _interactions = interactions;
             _modalstate = modalstate;
+            _repo = repo;
         }
 
         public class CreatePlayerModal : IModal
@@ -56,8 +58,6 @@ namespace EgoBot
                 placeholder: "Digite o overall do personagem...",
                 maxLength: 4000)]
             public string Overall { get; set; }
-
-
 
 
         }
@@ -216,13 +216,15 @@ namespace EgoBot
             }
 
             int check = await _service.CreatePlayer(modal.Nome, modal.Idade, nationality, modal.Overall);
-            if (check == 0)
+            if (check == -404)
             {
-
+                await RespondAsync("Algo deu errado. Tente novamente.", ephemeral: true);
             }
-            await RespondAsync($"Jogador {modal.Nome} criado com sucesso!", ephemeral: true);
-
-
+            else
+            {
+                await RespondAsync($"Jogador {modal.Nome} criado com sucesso!", ephemeral: true);
+            }
+            
         }
 
         //Edit player handlers
@@ -234,7 +236,7 @@ namespace EgoBot
             
             _modalstate.Set(Context.User.Id, new List<string> { modal.NewName, modal.Vigor, modal.Ego, modal.Overall, modal.Idade });
             
-            List<Player> players = await PlayerRepo.Load();
+            List<Player> players = await _repo.Load();
 
             var menu = new SelectMenuBuilder();
             menu.WithCustomId($"editselect")
@@ -257,7 +259,7 @@ namespace EgoBot
         {
             _modalstate.Set(Context.User.Id, new List<string> { modal.info1, modal.info2, modal.info3, modal.info4, modal.info5 });
             
-            List<Player> players = await PlayerRepo.Load();
+            List<Player> players = await _repo.Load();
 
             var menu = new SelectMenuBuilder();
             menu.WithCustomId($"addinfoselect")
@@ -281,7 +283,7 @@ namespace EgoBot
         {
             _modalstate.Set(Context.User.Id, new List<string> { modal.MCharPic, modal.MTransPic, modal.MIconPic });
             
-            List<Player> players = await PlayerRepo.Load();
+            List<Player> players = await _repo.Load();
 
             var menu = new SelectMenuBuilder();
             menu.WithCustomId($"altpicselect")
@@ -300,44 +302,7 @@ namespace EgoBot
 
         }
 
-        //Skill modals
-
-        [ModalInteraction("create_skill")]
-        public async Task _createskill(CreateSkillModal modal)
-        {
-            ResourceType resourcetype;
-
-            switch (modal.Resource.ToLower())
-            {
-                case "vigor":
-                    resourcetype = ResourceType.vigor;
-                    break;
-
-                case "ego":
-                    resourcetype = ResourceType.ego;
-                    break;
-
-                case "flow":
-                    resourcetype = ResourceType.flow;
-                    break;
-
-                default:
-                    await RespondAsync("Recurso inválido, escolha entre Vigor, Ego ou Flow", ephemeral: true);
-                    throw new ArgumentException("Recurso inválido.");
-            }
-
-            Skill newskill = await _service.CreateSkill(modal.Name, modal.Desc, modal.Cost, resourcetype);
-            _modalstate.TryGet(Context.User.Id, out List<string> modlist);
-            var players = await PlayerRepo.Load();
-            var player = players.FirstOrDefault(p => p.Name == modlist[0]);
-
-            player.Skills.Add(newskill);
-            await PlayerRepo.Save(players);
-            await _service.UpdatePlayer(player.Name);
-
-            await RespondAsync("Skill criada com sucesso", ephemeral: true);
-
-        }
+        
 
     } 
 

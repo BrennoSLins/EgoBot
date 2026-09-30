@@ -8,10 +8,36 @@ using System.IO;
 
 namespace EgoBot;
 
-internal class PlayerRepo
+public class PlayerRepo
 {
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public static async Task<List<Player>> Load()
+    public async Task Update(Func<List<Player>, Task> action)
+    {
+        await _semaphore.WaitAsync();
+
+        try
+        {
+            var players = await Load();
+
+            await action(players);
+
+            await Save(players);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in {action.Method.Name}: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    
+
+    public async Task<List<Player>> Load()
         {
             if (!File.Exists("Playerlist.json"))
             {
@@ -24,7 +50,7 @@ internal class PlayerRepo
             return JsonSerializer.Deserialize<List<Player>>(json);
         }
 
-        public static async Task Save(List<Player> players)
+     public async Task Save(List<Player> players)
         {
             string json = JsonSerializer.Serialize(players, new JsonSerializerOptions
             {

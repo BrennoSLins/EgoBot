@@ -16,12 +16,14 @@ namespace EgoBot
         private readonly PlayerService _service;
         private readonly InteractionService _interactions;
         private readonly Bot _bot;
+        private readonly PlayerRepo _repo;
 
-        public SlashCommands(PlayerService service, InteractionService interactions, Bot bot)
+        public SlashCommands(PlayerService service, InteractionService interactions, Bot bot, PlayerRepo repo)
         {
             _service = service;
             _interactions = interactions;
             _bot = bot;
+            _repo = repo;
         }
 
         //-------------------------------Console Commands---------------------------
@@ -56,7 +58,7 @@ namespace EgoBot
         {
             await DeferAsync();
 
-            var players = await PlayerRepo.Load();
+            var players = await _repo.Load();
             
             
             foreach (var player in players)
@@ -119,9 +121,35 @@ namespace EgoBot
             await RespondAsync(embed: embed.Build(), ephemeral: true);
 
         }
-          
+
 
         //--------------------------------Quick Change Commands---------------------------
+
+        [SlashCommand("qcpanel", "Implanta o painel de alteração rápida")]
+        public async Task _qcpanel([Autocomplete(typeof(PlayerAutocompleteHandler))] string Jogador)
+        {
+            var button = new ComponentBuilder()
+               //Vigor change section
+               .WithButton("<<", $"qc:{Jogador}:vg-2", ButtonStyle.Danger, row: 0)
+               .WithButton("<", $"qc:{Jogador}:vg-1", ButtonStyle.Danger, row: 0)
+               .WithButton(">", $"qc:{Jogador}:vg+1", ButtonStyle.Danger, row: 0)
+               .WithButton(">>", $"qc:{Jogador}:vg+2", ButtonStyle.Danger, row: 0)
+
+               //Ego change section
+               .WithButton("<<", $"qc:{Jogador}:ego-2", ButtonStyle.Secondary, row: 1)
+               .WithButton("<", $"qc:{Jogador}:ego-1", ButtonStyle.Secondary, row: 1)
+               .WithButton(">", $"qc:{Jogador}:ego+1", ButtonStyle.Secondary, row: 1)
+               .WithButton(">>", $"qc:{Jogador}:ego+2", ButtonStyle.Secondary, row: 1)
+
+               //Flow change section
+               .WithButton("<<", $"qc:{Jogador}:flow-2", ButtonStyle.Primary, row: 2)
+               .WithButton("<", $"qc:{Jogador}:flow-1", ButtonStyle.Primary, row: 2)
+               .WithButton(">", $"qc:{Jogador}:flow+1", ButtonStyle.Primary, row: 2)
+               .WithButton(">>", $"qc:{Jogador}:flow+2", ButtonStyle.Primary, row: 2);
+
+
+            await RespondAsync(components: button.Build(), ephemeral: true);
+        }
 
         [SlashCommand("setvigor", "Define o vigor do jogador")]
         public async Task _SetVigor([Autocomplete(typeof(PlayerAutocompleteHandler))] string Jogador, int Vigor)
@@ -181,7 +209,7 @@ namespace EgoBot
             await DeferAsync(ephemeral: true);
             var usuario = Context.User;
             Console.WriteLine($"Comando hp executado por: {usuario.Username}");
-            Console.WriteLine($"{Jogador}jogador, {Vigor}vigor");
+            Console.WriteLine($"{Jogador}, {Vigor} vigor");
 
             int erchek = await _service.VigChange(Jogador, Vigor);
             if (erchek == -404)
@@ -229,41 +257,34 @@ namespace EgoBot
             await _service.UpdatePlayer(Jogador);
             await FollowupAsync($"{Jogador} recebeu {Flow} de flow.");
         }
-
-        [SlashCommand("test", "test")]
-        public async Task _test([Autocomplete(typeof(PlayerAutocompleteHandler))]string jogador, string skillinp)
-        {
-            Embed? embed = await _service.ShowSkill(jogador, skillinp);
-
-            var button = new ComponentBuilder()
-              .WithButton("➕ Aceitar", "skillaccept", ButtonStyle.Success, row: 0)
-              .WithButton("❌ Recusar", "skilldeny", ButtonStyle.Danger, row: 0);
-
-            //await _bot.SendPlayerRequest($"O jogador {jogador} solicitou o uso de uma skill", embed: embed, components: button.Build());
-
-
-        }
-
+                
         [SlashCommand("healall", "Recupera turo e toros.")]
         public async Task test4()
         {
             await DeferAsync(ephemeral: true);
+            List<string> names = new List<string>();
 
-            var players = await PlayerRepo.Load();
-           
-            foreach (Player player in players)
+            await _repo.Update(async players =>
             {
-                player.Vigor = player.MaxVigor;
-                player.Ego = player.MaxEgo;
-                player.Flow = 0;
+                foreach (Player player in players)
+                {
+                    player.Vigor = player.MaxVigor;
+                    player.Ego = player.MaxEgo;
+                    player.Flow = 0;
+                }
+
+                foreach (Player player in players)
+                {
+                    names.Add(player.Name);
+                }
+            });
+
+            foreach (string name in names)
+            {
+                await _service.UpdatePlayer(name);
             }
             
-            foreach (Player player in players)
-            {
-                await _service.UpdatePlayer(player.Name);
-            }
-            await PlayerRepo.Save(players);
-
+           
 
             await FollowupAsync($"Jogadores recuperados completamente!");
 
@@ -273,13 +294,19 @@ namespace EgoBot
 
         public class PlayerAutocompleteHandler : AutocompleteHandler
         {
+            private readonly PlayerRepo _repo;
+            public PlayerAutocompleteHandler(PlayerRepo repo)
+            {
+                _repo = repo;
+            }
+
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(
                 IInteractionContext context,
                 IAutocompleteInteraction autocompleteInteraction,
                 IParameterInfo parameter,
                 IServiceProvider services)
             {
-                var players = await PlayerRepo.Load();
+                var players = await _repo.Load();
 
                 var input = autocompleteInteraction.Data.Current.Value?.ToString() ?? "";
 

@@ -20,96 +20,88 @@ namespace EgoBot
     public class PlayerService
     {
         private Bot _bot;
+        private PlayerRepo _repo;
         
 
-        public PlayerService(Bot bot)
+        public PlayerService(Bot bot, PlayerRepo repo)
         {
             _bot = bot;
-           
+            _repo = repo;
         }
 
         public async Task<int> VigChange(string pname, int value)
         {
-            try
-            {
-                
-                List<Player> players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
-
-
-                if (player != null)
+            int result = 0;     
+            
+                await _repo.Update(players =>
                 {
-                    player.Vigor += value;
-                    await PlayerRepo.Save(players);
-                    return player.Vigor;
-                }
-                else
-                {
-                    Console.WriteLine("Player not found");
-                    return -404;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in VigorChange: {ex.Message}");
-                return -404;
-            }
+                    var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+                    if (player != null)
+                    {
+                        player.Vigor += value;
+                        result = 1;
+                        return Task.FromResult(0);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Player not found");
+                        result = -404;
+                        return Task.FromResult(-404);
+                    }
+                                      
+                    
+                });
 
+            return result;
         }
 
         public async Task<int> EgoChange(string pname, int value)
         {
-            try
-            {
-                
-                List<Player> players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+            int result = 0;
 
+            await _repo.Update(players =>
+            {
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
                 if (player != null)
                 {
                     player.Ego += value;
-                    await PlayerRepo.Save(players);
-                    return player.Ego;
+                    result = 1;
+                    return Task.FromResult(0);
                 }
                 else
                 {
-                    Console.WriteLine("Who is this neguinho?");
-                    return -404;
+                    Console.WriteLine("Player not found");
+                    result = -404;
+                    return Task.FromResult(-404);
                 }
+            });
 
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in EgoChange: {ex.Message}");
-                return -404;
-            }
+            return result;
+            
         }
 
         public async Task<int> FlowChange(string pname, int value)
         {
-            try
-            {
-                pname = pname.ToLower();
-                List<Player> players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+            int result = 0;
 
+            await _repo.Update(players =>
+            {
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
                 if (player != null)
                 {
                     player.Flow += value;
-                    await PlayerRepo.Save(players);
-                    return player.Flow;
+                    result = 1;
+                    return Task.FromResult(0);
                 }
                 else
                 {
-                    Console.WriteLine("Who is this neguinho?");
-                    return -404;
+                    Console.WriteLine("Player not found");
+                    result = -404;
+                    return Task.FromResult(-404);
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in FlowChange: {ex.Message}");
-                return -404;
-            }
+            });
+
+            return result;
 
 
 
@@ -117,58 +109,35 @@ namespace EgoBot
 
         public async Task<int> CreatePlayer(string pname, int age, Nationality natio, string overall)
            {
-               try
-               {
+            int result = 0;
+            
+            await _repo.Update(players =>
+            {
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+                if (player != null)
+                {
+                    Console.WriteLine("CreatePlayer: Player already exists.");
+                    result = -404;
+                    return Task.FromResult(-404);
+                }
+                Player newplayer = new Player();
 
-                   var players = await PlayerRepo.Load();
-                   var player = players.FirstOrDefault(p => p.Name == pname);
+                newplayer.Name = pname;
+                newplayer.Age = age;
+                newplayer.Nationality = natio;
+                newplayer.Overall = overall;
 
-                   if (player != null)
-                   {
-                       Console.WriteLine("CreatePlayer: Player already exists.");
-                       return 0;
-                   }
+                players.Add(newplayer);
+                result = 1;
+                return Task.FromResult(1);
+            });
 
-                   Player newplayer = new Player();
-                   newplayer.Name = pname;
-
-                   newplayer.Age = age;
-
-                   newplayer.Nationality = natio;
-
-                   newplayer.Overall = overall;
-                          
-                   
-                   players.Add(newplayer);
-
-
-                   await PlayerRepo.Save(players);
-
-                   return 1;
-               }
-               catch (Exception ex)
-               {
-                   Console.WriteLine($"Error in CreatePlayer: {ex.Message}");
-                   return 0;
-               }
-
-
+            return result;
            }
 
         public async Task EditPlayer(List<string> Info, string pname)
         {
-            try
-            {
-
-                var players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name == pname);
-
-                if (player == null)
-                {
-                    Console.WriteLine("EditPlayer: Player dont exist.");
-                    return;
-                }
-
+            
                 string vig = Info.ElementAtOrDefault(1) ?? "";
                 string ego = Info.ElementAtOrDefault(2) ?? "";
                 string age = Info.ElementAtOrDefault(4) ?? "";
@@ -176,32 +145,37 @@ namespace EgoBot
                 string newname = Info.ElementAtOrDefault(0) ?? "";
                 string overall = Info.ElementAtOrDefault(3) ?? "";
 
-                
+                await _repo.Update(players =>
+                { 
 
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
 
                 if (newname != "")
+                { 
                     player.Name = newname;
+                }
 
                 if (vig != "")
                 {
                     int newvig;
-                    while (!int.TryParse(vig, out newvig))
+                    if (!int.TryParse(vig, out newvig))
                     {
-                        Console.WriteLine("EditPlayer: Vigor não foi um número int");
+                        Console.WriteLine("EditPlayer: Vigor não foi um número int. Valor atribuido como 0");
+                        player.Vigor = 0;
                     }
-                    
+
                     player.Vigor = newvig;
                     player.MaxVigor = newvig;
                 }
-                    
+
                 if (ego != "")
                 {
                     int newego;
 
                     if (!int.TryParse(ego, out newego))
                     {
-                        Console.WriteLine("EditPlayer: Ego não foi um número int");
-                        return;
+                        Console.WriteLine("EditPlayer: Ego não foi um número int. Valor atribuido como 0");
+                        player.Ego = 0;
                     }
 
                     player.Ego = newego;
@@ -218,39 +192,27 @@ namespace EgoBot
                     int newage;
                     if (!int.TryParse(age, out newage))
                     {
-                        Console.WriteLine("EditPlayer: Idade não foi um número int");
+                        Console.WriteLine("EditPlayer: Idade não foi um número int. Valor atribuido como 0");
+                        player.Age = 0;
                     }
                     player.Age = newage;
-                }
-                                                       
-                                                
-                await PlayerRepo.Save(players);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in EditPlayer: {ex.Message}");
-                return;
-            }
 
+                }
+                
+                    return Task.CompletedTask;
+            });
+             
 
         }
 
         public async Task DeletePlayer(string pname)
         {
-            try
+            await _repo.Update(players =>
             {
-
-                var players = await PlayerRepo.Load();
-
                 players.RemoveAll(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
-
-                await PlayerRepo.Save(players);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in DeletPlayer: {ex.Message}");
-                return;
-            }
+                return Task.CompletedTask;
+            });
+            
         }
 
         public async Task<Player?> GetPlayer(string pname)
@@ -258,7 +220,7 @@ namespace EgoBot
             try
             {
 
-                var players = await PlayerRepo.Load();
+                var players = await _repo.Load();
                 var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
 
                 if (player == null)
@@ -369,147 +331,123 @@ namespace EgoBot
 
         public async Task SetMessageID(string pname, IUserMessage messageId)
         {
-            try
+            await _repo.Update(players =>
             {
-                var players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name == pname);
-
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
                 if (player == null)
                 {
-                    Console.WriteLine("Jogador não existe: Task SetMessageID");
-                    return;
+                    Console.WriteLine("SetMessageID: Player not found");
+                    return Task.CompletedTask;
                 }
-
                 if (player.MessageId != messageId.Id)
                 {
                     player.MessageId = messageId.Id;
                 }
-
                 if (player.ChannelId != messageId.Channel.Id)
                 {
                     player.ChannelId = messageId.Channel.Id;
                 }
 
-
-
-                await PlayerRepo.Save(players);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in SetMessageID: {ex.Message}");
-                return;
-            }
-
+                return Task.CompletedTask;
+            });
+            
+           
         }
                
         public async Task<int> VigSet(string pname, int value)
         {
-            try
-            {
-                List<Player> players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+            int result = 0;
 
+            await _repo.Update(players =>
+            {
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
                 if (player != null)
                 {
                     player.Vigor = value;
-                    await PlayerRepo.Save(players);
-                    return player.Vigor;
+                    return Task.CompletedTask;
                 }
                 else
                 {
                     Console.WriteLine("Player not found");
-                    return -404;
+                    result = -404;
+                    return Task.FromResult(-404);
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in CreatePlayer: {ex.Message}");
-                return -404;
-            }
+                
+            });
+
+            return result;
 
         }
 
         public async Task<int> EgoSet(string pname, int value)
         {
-            try
+            int result = 0;
+
+            await _repo.Update(players =>
             {
-
-                List<Player> players = await PlayerRepo.Load();
                 var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
-
                 if (player != null)
                 {
                     player.Ego = value;
-                    await PlayerRepo.Save(players);
-                    return player.Ego;
+                    return Task.CompletedTask;
                 }
                 else
                 {
                     Console.WriteLine("Player not found");
-                    return -404;
+                    result = -404;
+                    return Task.FromResult(-404);
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in MPSet: {ex.Message}");
-                return -404;
-            }
+                
+            });
 
+            return result;
+          
         }
 
         public async Task<int> FlowSet(string pname, int value)
         {
-            try
-            {
-                List<Player> players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+            int result = 0;
 
+            await _repo.Update(players =>
+            {
+                
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
                 if (player != null)
                 {
                     player.Flow = value;
-                    await PlayerRepo.Save(players);
-                    return player.Flow;
+                    return Task.CompletedTask;
                 }
                 else
                 {
                     Console.WriteLine("Player not found");
-                    return -404;
+                    result = -404;
+                    return Task.CompletedTask;
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in FlowSet: {ex.Message}");
-                return -404;
-            }
+            });
+
+            return result;
         }
 
         public async Task AddStatus(List<string> Info, string pname)
-        {
-            try
-            {
-                List<Player> players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
-
-                if (player == null)
-                {
-                    Console.WriteLine("Player não encontrado");
-                    return;
-                }
-
+        {           
+                
                 string info1 = Info.ElementAtOrDefault(0) ?? "";
                 string info2 = Info.ElementAtOrDefault(1) ?? "";
                 string info3 = Info.ElementAtOrDefault(2) ?? "";
                 string info4 = Info.ElementAtOrDefault(3) ?? "";
                 string info5 = Info.ElementAtOrDefault(4) ?? "";
 
-                
+
+            await _repo.Update(players =>
+            {
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
 
                 if (!player.Status.Contains(info1))
                     player.Status.Add(info1);
 
                 if (info2 != "" && !player.Status.Contains(info2))
                     player.Status.Add(info2);
-                                   
+
                 if (info3 != "" && !player.Status.Contains(info3))
                     player.Status.Add(info3);
 
@@ -519,45 +457,36 @@ namespace EgoBot
                 if (info5 != "" && !player.Status.Contains(info5))
                     player.Status.Add(info5);
 
-                await PlayerRepo.Save(players);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in AddInfo: {ex.Message}");
-                return;
-            }
+                return Task.CompletedTask;
+            });
+                         
+                            
         }
 
         public async Task RemoveStatus(string pname)
         {
-            try
-            {
 
-                List<Player> players = await PlayerRepo.Load();
+            await _repo.Update(players =>
+            {
                 var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
 
                 if (player == null)
                 {
                     Console.WriteLine("Player não encontrado");
-                    return;
+                    return Task.CompletedTask;
                 }
 
                 player.Status.Clear();
-
-                await PlayerRepo.Save(players);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in RemoveStatus: {ex.Message}");
-                return;
-            }
+                return Task.CompletedTask;
+            });
+            
         }
 
         public async Task UpdatePlayer(string pname)
         {
             try
             {
-                var players = await PlayerRepo.Load();
+                var players = await _repo.Load();
                 var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
                 
 
@@ -603,11 +532,8 @@ namespace EgoBot
 
         public async Task AltPlayerPic(List<string> modallist, string pname)
         {
-            try
-            {
-                var players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
-
+           
+                
                 string fuck1 = modallist.ElementAtOrDefault(0) ?? "";
                 Console.WriteLine($"{fuck1}");
                 string fuck2 = modallist.ElementAtOrDefault(1) ?? "";
@@ -616,6 +542,14 @@ namespace EgoBot
                 Console.WriteLine($"{fuck3}");
 
 
+            await _repo.Update(players =>
+            {
+                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+                if (player == null)
+                {
+                    Console.WriteLine("AltPic: Player not found.");
+                    return Task.CompletedTask;
+                }
 
                 if (fuck1 != "")
                 {
@@ -631,22 +565,18 @@ namespace EgoBot
                 {
                     player.IconPic = fuck3;
                 }
-                                
-
-                await PlayerRepo.Save(players);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in AltPlayerPic: {ex.Message}");
-                return;
-            }
+                return Task.CompletedTask;
+            });
+         
+                
         }
+            
 
         public async Task<Embed?> RegisteredPlayers()
         {
             try
             {
-                List<Player> players = await PlayerRepo.Load();
+                List<Player> players = await _repo.Load();
 
                 if (players.Count == 0)
                 {
@@ -675,141 +605,62 @@ namespace EgoBot
 
         public async Task<int> Transform(string pname)
         {
-            try
+            int result = 0;
+            await _repo.Update(players =>
             {
-                var players = await PlayerRepo.Load();
                 var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+
                 if (player != null && (player.TransPic == null || player.TransPic == ""))
                 {
-                    return 3;
+                    result = 3; //Player não possui imagem de transformação
+                    return Task.FromResult(3);
                 }
 
                 else if (player != null && !player.IsTransformed)
                 {
                     player.IsTransformed = true;
-                    
-                    await PlayerRepo.Save(players);
-                    return 1;
+                    result = 1; //Transformado
+                    return Task.FromResult(1);
+
                 }
                 else if (player != null && player.IsTransformed)
                 {
                     player.IsTransformed = false;
-                    await PlayerRepo.Save(players);
-                    return 0;
+                    result = 2; //Destransformado
+                    return Task.FromResult(2);
                 }
-                
-                return 3;
+                else
+                {
+                    result = -404; //Player não encontrado
+                    return Task.FromResult(-404);
+                }
+            });
 
+            return result;
                 
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in Transform: {ex.Message}");
-                return 3;
-            }
+         
         }
 
         public async Task RenamePlayer(string pname, string nname)
         {
-            try
+
+            await _repo.Update(players => {
+
+            var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
+
+            if (player != null)
             {
-                var players = await PlayerRepo.Load();
-                var player = players.FirstOrDefault(p => p.Name.Equals(pname, StringComparison.OrdinalIgnoreCase));
-                if (player != null)
-                {
-                    player.Name = nname;
-                }
-                else
-                {
-                    return;
-                }
-                await PlayerRepo.Save(players);
+                player.Name = nname;
+                return Task.CompletedTask;
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"Error in RenamePlayer: {ex.Message}");
-                return;
-            }
-        }
-             
-        public async Task<Skill> CreateSkill(string name, string desc, int amount, ResourceType resource)
-        {
-            Skill newskill = new Skill();
-
-            newskill.Name = name;
-            newskill.Description = desc;
-            newskill.Cost = amount;
-            newskill.Resource = resource;
-
-            return newskill;
-        }
-
-        public async Task<int> UseSkill(string pname, string pskill)
-        {
-            var players = await PlayerRepo.Load();
-            var player = players.FirstOrDefault(p => p.Name == pname);
-            Skill? skill = player.Skills.FirstOrDefault(p => p.Name.Equals(pskill, StringComparison.OrdinalIgnoreCase));
-
-            switch (skill.Resource)
-            {
-                case ResourceType.vigor: 
-                    if (player.Vigor >= skill.Cost)
-                    {
-                        player.Vigor += skill.Cost;
-                        await PlayerRepo.Save(players);
-                        return 1;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-                                                                                
-                case ResourceType.ego: 
-                    if (player.Ego >= skill.Cost)
-                    {
-                        player.Ego += skill.Cost;
-                        await PlayerRepo.Save(players);
-                        return 1;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-
-                case ResourceType.flow: 
-                    if (player.Flow >= skill.Cost)
-                    {
-                        player.Flow += skill.Cost;
-                        await PlayerRepo.Save(players);
-                        return 1;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-
-                
-                default:
-                    return 3;
-
+                return Task.CompletedTask;
             }
 
-            
+            });
         }
+                  
 
-        public async Task<Embed?> ShowSkill(string pname, string pskill)
-        {
-            var players = await PlayerRepo.Load();
-            var player = players.FirstOrDefault(p => p.Name == pname);
-            Skill? skill = player.Skills.FirstOrDefault(p => p.Name.Equals(pskill, StringComparison.OrdinalIgnoreCase));
-
-            var embed = new EmbedBuilder()
-            .WithTitle($"{skill.Name}:")
-            .WithDescription($"{skill.Description}")
-            .AddField($"[{skill.Cost} de {skill.Resource} ao uso]", "\u200B", inline: false)
-            .WithColor(Color.DarkBlue);
-
-            return embed.Build();
-        }
     }
 }
